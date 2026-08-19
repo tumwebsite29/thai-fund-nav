@@ -67,11 +67,11 @@ def build_fund_name(abbr, fund_class):
     cp = common_prefix_len(fc_n, abbr_n)
     shorter_len = min(len(fc_n), len(abbr_n))
 
-    # เช็คแบบ 2 ทิศทาง: ไม่ว่า fund_class_name จะ "ยาวกว่า" proj_abbr_name
-    # (เช่น "1AM-DAILY" vs "1AM-DAILY-RA") หรือ "สั้นกว่า" (เช่น "ABAGS-M"
-    # vs "ABAGS") ถ้ามี prefix ร่วมกันมากพอ ถือว่ามาจากชื่อกองทุนเดียวกัน
-    # ใช้ fund_class_name ตรง ๆ เลย ไม่ต่อซ้ำ
-    if shorter_len >= 3 and cp >= 4 and cp >= shorter_len - 2:
+    # เช็คแบบ 2 ทิศทาง ไม่สนว่าส่วนที่เหลือหลัง prefix จะยาวแค่ไหน (SEC
+    # บาง บลจ. ตั้งชื่อ proj_abbr_name/fund_class_name ไม่ตรงกันทั้งหมด
+    # เช่นตัดคำบางคำออก หรือมีคำต่อท้ายยาวๆ) ขอแค่มี prefix ร่วมกันอย่าง
+    # น้อย 4 ตัวอักษร และทั้งคู่ไม่สั้นเกินไป ก็ถือว่ามาจากกองทุนเดียวกัน
+    if shorter_len >= 3 and cp >= 4:
         return fc
 
     # ไม่เกี่ยวข้องกันพอ แปลว่า fund_class_name เป็นรหัสสั้นจริง ๆ
