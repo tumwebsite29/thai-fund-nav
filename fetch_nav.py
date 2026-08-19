@@ -46,13 +46,23 @@ def norm(s):
     return re.sub(r"[^A-Za-z0-9]", "", s or "").upper()
 
 
-def common_prefix_len(a, b):
-    """ความยาวของ prefix ที่เหมือนกันของสอง string"""
-    n = min(len(a), len(b))
-    i = 0
-    while i < n and a[i] == b[i]:
-        i += 1
-    return i
+def lcs_len(a, b):
+    """หาความยาวของ substring ที่ยาวที่สุดที่ปรากฏเหมือนกันใน a และ b
+    (ไม่ว่าจะอยู่ตำแหน่งไหนของ string ก็ตาม ไม่จำกัดแค่ต้นคำแบบ prefix)"""
+    if not a or not b:
+        return 0
+    m, n = len(a), len(b)
+    prev = [0] * (n + 1)
+    best = 0
+    for i in range(1, m + 1):
+        curr = [0] * (n + 1)
+        for j in range(1, n + 1):
+            if a[i - 1] == b[j - 1]:
+                curr[j] = prev[j - 1] + 1
+                if curr[j] > best:
+                    best = curr[j]
+        prev = curr
+    return best
 
 
 def build_fund_name(abbr, fund_class):
@@ -63,15 +73,21 @@ def build_fund_name(abbr, fund_class):
     abbr_core = strip_fund_suffix(abbr)
     abbr_n = norm(abbr_core)
     fc_n = norm(fc)
-
-    cp = common_prefix_len(fc_n, abbr_n)
     shorter_len = min(len(fc_n), len(abbr_n))
 
-    # เช็คแบบ 2 ทิศทาง ไม่สนว่าส่วนที่เหลือหลัง prefix จะยาวแค่ไหน (SEC
-    # บาง บลจ. ตั้งชื่อ proj_abbr_name/fund_class_name ไม่ตรงกันทั้งหมด
-    # เช่นตัดคำบางคำออก หรือมีคำต่อท้ายยาวๆ) ขอแค่มี prefix ร่วมกันอย่าง
-    # น้อย 4 ตัวอักษร และทั้งคู่ไม่สั้นเกินไป ก็ถือว่ามาจากกองทุนเดียวกัน
-    if shorter_len >= 3 and cp >= 4:
+    if shorter_len < 3:
+        # fund_class_name หรือ proj_abbr_name สั้นเกินไปจะเทียบให้แม่นยำ
+        # (เช่น fc="A", "I") ถือว่าเป็นรหัสสั้น ต่อกับชื่อกองทุนแบบเดิม
+        return f"{abbr}-{fc}"
+
+    # ต้องการ substring ร่วมกันอย่างน้อย 4 ตัวอักษร (ไม่ว่าจะอยู่ต้นคำ
+    # กลางคำ ยาวกว่า สั้นกว่า หรือมีคำแทรก/หายไปก็ตาม) แต่ถ้า string สั้น
+    # กว่า 4 อยู่แล้ว (เช่น "MMM" มี 3 ตัว) ก็ลดเกณฑ์ลงมาเท่าความยาวจริง
+    required = min(4, shorter_len)
+
+    if lcs_len(fc_n, abbr_n) >= required:
+        # fund_class_name กับ proj_abbr_name มีส่วนที่เหมือนกันมากพอ ถือว่า
+        # มาจากชื่อกองทุนเดียวกัน ใช้ fund_class_name ตรง ๆ เลย ไม่ต่อซ้ำ
         return fc
 
     # ไม่เกี่ยวข้องกันพอ แปลว่า fund_class_name เป็นรหัสสั้นจริง ๆ
