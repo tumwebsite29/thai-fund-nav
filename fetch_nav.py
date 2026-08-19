@@ -7,6 +7,7 @@
 """
 
 import os
+import re
 import csv
 from datetime import date, timedelta, datetime, timezone
 from zoneinfo import ZoneInfo
@@ -29,6 +30,38 @@ def call_api(path, params):
         return {"items": [], "next_cursor": None}
     resp.raise_for_status()
     return resp.json()
+
+
+def strip_fund_suffix(name):
+    """ตัดคำว่า 'FUND' ท้ายชื่อออก เช่น 'KKP ACT FIXED FUND' -> 'KKP ACT FIXED'"""
+    words = (name or "").strip().split()
+    if words and words[-1].upper() == "FUND":
+        words = words[:-1]
+    return " ".join(words).strip()
+
+
+def norm(s):
+    """ตัดช่องว่าง/ขีด/เครื่องหมายทั้งหมดออก แล้วแปลงเป็นตัวพิมพ์ใหญ่ ใช้เทียบ
+    string แบบไม่สนรูปแบบการเว้นวรรค/ตัวพิมพ์เล็ก-ใหญ่ที่ไม่ตรงกัน"""
+    return re.sub(r"[^A-Za-z0-9]", "", s or "").upper()
+
+
+def build_fund_name(abbr, fund_class):
+    fc = (fund_class or "").strip()
+    if fc == "" or fc.lower() == "main":
+        return abbr
+
+    abbr_core = strip_fund_suffix(abbr)
+    abbr_core_n = norm(abbr_core)
+
+    if abbr_core_n and norm(fc).startswith(abbr_core_n):
+        # fund_class_name มีชื่อกองทุนซ้อนอยู่ในตัวเองแล้ว (ไม่ว่าจะมีคำว่า
+        # FUND แทรกอยู่ใน proj_abbr_name หรือไม่ก็ตาม) ใช้ fund_class_name
+        # ตรง ๆ เลย ไม่ต่อซ้ำ
+        return fc
+
+    # fund_class_name เป็นรหัสสั้นจริง ๆ (เช่น "A", "I", "SSF") ต่อกับชื่อกองทุน
+    return f"{abbr}-{fc}"
 
 
 def fetch_all_pages(path, params):
@@ -81,17 +114,7 @@ def main():
         if profile.get("fund_status") != "Registered":
             continue
         abbr = profile.get("proj_abbr_name") or proj_id
-        fc = fund_class or ""
-        if fc.lower() == "main" or fc == "":
-            fund_name = abbr
-        elif fc.upper().startswith(abbr.upper()):
-            # fund_class_name บางกองทุนมีชื่อเต็มซ้ำกับ proj_abbr_name อยู่แล้ว
-            # (เช่น proj_abbr_name="1AM-DAILY", fund_class_name="1AM-DAILY-RA")
-            # ใช้ fund_class_name ตรง ๆ เลย ไม่ต่อซ้ำ กัน "1AM-DAILY-1AM-DAILY-RA"
-            fund_name = fc
-        else:
-            # fund_class_name เป็นรหัสสั้น (เช่น "A", "I", "SSF") ต่อกับชื่อกองทุน
-            fund_name = f"{abbr}-{fc}"
+        fund_name = build_fund_name(abbr, fund_class)
         rows.append(
             {
                 "fund_name": fund_name,
