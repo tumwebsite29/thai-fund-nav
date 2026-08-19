@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: update-nav
+  cancel-in-progress: false
+
 jobs:
   update-nav:
     runs-on: ubuntu-latest
