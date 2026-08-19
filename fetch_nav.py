@@ -46,21 +46,36 @@ def norm(s):
     return re.sub(r"[^A-Za-z0-9]", "", s or "").upper()
 
 
+def common_prefix_len(a, b):
+    """ความยาวของ prefix ที่เหมือนกันของสอง string"""
+    n = min(len(a), len(b))
+    i = 0
+    while i < n and a[i] == b[i]:
+        i += 1
+    return i
+
+
 def build_fund_name(abbr, fund_class):
     fc = (fund_class or "").strip()
     if fc == "" or fc.lower() == "main":
         return abbr
 
     abbr_core = strip_fund_suffix(abbr)
-    abbr_core_n = norm(abbr_core)
+    abbr_n = norm(abbr_core)
+    fc_n = norm(fc)
 
-    if abbr_core_n and norm(fc).startswith(abbr_core_n):
-        # fund_class_name มีชื่อกองทุนซ้อนอยู่ในตัวเองแล้ว (ไม่ว่าจะมีคำว่า
-        # FUND แทรกอยู่ใน proj_abbr_name หรือไม่ก็ตาม) ใช้ fund_class_name
-        # ตรง ๆ เลย ไม่ต่อซ้ำ
+    cp = common_prefix_len(fc_n, abbr_n)
+    shorter_len = min(len(fc_n), len(abbr_n))
+
+    # เช็คแบบ 2 ทิศทาง: ไม่ว่า fund_class_name จะ "ยาวกว่า" proj_abbr_name
+    # (เช่น "1AM-DAILY" vs "1AM-DAILY-RA") หรือ "สั้นกว่า" (เช่น "ABAGS-M"
+    # vs "ABAGS") ถ้ามี prefix ร่วมกันมากพอ ถือว่ามาจากชื่อกองทุนเดียวกัน
+    # ใช้ fund_class_name ตรง ๆ เลย ไม่ต่อซ้ำ
+    if shorter_len >= 3 and cp >= 4 and cp >= shorter_len - 2:
         return fc
 
-    # fund_class_name เป็นรหัสสั้นจริง ๆ (เช่น "A", "I", "SSF") ต่อกับชื่อกองทุน
+    # ไม่เกี่ยวข้องกันพอ แปลว่า fund_class_name เป็นรหัสสั้นจริง ๆ
+    # (เช่น "A", "I", "SSF") ต่อกับชื่อกองทุนแบบเดิม
     return f"{abbr}-{fc}"
 
 
