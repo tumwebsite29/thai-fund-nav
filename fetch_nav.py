@@ -8,7 +8,8 @@
 
 import os
 import csv
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
+from zoneinfo import ZoneInfo
 import requests
 
 SUBSCRIPTION_KEY = os.environ["SEC_API_KEY"]
@@ -80,7 +81,17 @@ def main():
         if profile.get("fund_status") != "Registered":
             continue
         abbr = profile.get("proj_abbr_name") or proj_id
-        fund_name = abbr if fund_class == "main" else f"{abbr}-{fund_class}"
+        fc = fund_class or ""
+        if fc.lower() == "main" or fc == "":
+            fund_name = abbr
+        elif fc.upper().startswith(abbr.upper()):
+            # fund_class_name บางกองทุนมีชื่อเต็มซ้ำกับ proj_abbr_name อยู่แล้ว
+            # (เช่น proj_abbr_name="1AM-DAILY", fund_class_name="1AM-DAILY-RA")
+            # ใช้ fund_class_name ตรง ๆ เลย ไม่ต่อซ้ำ กัน "1AM-DAILY-1AM-DAILY-RA"
+            fund_name = fc
+        else:
+            # fund_class_name เป็นรหัสสั้น (เช่น "A", "I", "SSF") ต่อกับชื่อกองทุน
+            fund_name = f"{abbr}-{fc}"
         rows.append(
             {
                 "fund_name": fund_name,
@@ -98,7 +109,8 @@ def main():
     print(f"  {len(rows)} funds in final output")
 
     write_csv(rows)
-    write_html(rows)
+    updated_at_th = datetime.now(timezone.utc).astimezone(ZoneInfo("Asia/Bangkok"))
+    write_html(rows, updated_at_th)
     print("Done: nav_latest.csv, nav_latest.html")
 
 
@@ -121,8 +133,8 @@ def write_csv(rows):
         writer.writerows(rows)
 
 
-def write_html(rows):
-    updated = date.today().isoformat()
+def write_html(rows, updated_at_th):
+    updated = updated_at_th.strftime("%Y-%m-%d %H:%M น. (เวลาไทย)")
     table_rows = "\n".join(
         f"<tr><td>{r['fund_name']}</td><td>{r['nav_date']}</td>"
         f"<td>{r['nav_value']}</td><td>{r['sell_price']}</td><td>{r['buy_price']}</td>"
