@@ -9,6 +9,7 @@
 import os
 import re
 import csv
+import time
 from datetime import date, timedelta, datetime, timezone
 from zoneinfo import ZoneInfo
 import requests
@@ -17,6 +18,7 @@ SUBSCRIPTION_KEY = os.environ["SEC_API_KEY"]
 BASE_URL = "https://api.sec.or.th"
 LOOKBACK_DAYS = 10
 PAGE_SIZE = 100
+MAX_RETRIES = 4
 
 HEADERS = {
     "Ocp-Apim-Subscription-Key": SUBSCRIPTION_KEY,
@@ -25,11 +27,21 @@ HEADERS = {
 
 
 def call_api(path, params):
-    resp = requests.get(BASE_URL + path, headers=HEADERS, params=params, timeout=30)
-    if resp.status_code == 204:
-        return {"items": [], "next_cursor": None}
-    resp.raise_for_status()
-    return resp.json()
+    last_error = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = requests.get(BASE_URL + path, headers=HEADERS, params=params, timeout=60)
+            if resp.status_code == 204:
+                return {"items": [], "next_cursor": None}
+            resp.raise_for_status()
+            return resp.json()
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            last_error = e
+            wait = 5 * attempt
+            print(f"  [retry {attempt}/{MAX_RETRIES}] {path} failed ({e}); waiting {wait}s")
+            time.sleep(wait)
+    # หมดจำนวนครั้งลองใหม่แล้วยังไม่ผ่าน ยอมแพ้และแจ้ง error จริง
+    raise last_error
 
 
 def strip_fund_suffix(name):
