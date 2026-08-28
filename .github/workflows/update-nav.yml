@@ -2,7 +2,7 @@ name: Update Thai Fund NAV
 
 on:
   schedule:
-    - cron: "30 3 * * *"   # 03:30 UTC = 10:30 น. เวลาไทย ทุกวัน
+    - cron: "30 3 * * *"   # 03:30 UTC = 10:30 น. เวลาไทย ทุกวัน (resync 29 ส.ค.)
   workflow_dispatch: {}      # ให้กดรันเองได้จากแท็บ Actions บน GitHub
 
 permissions:
